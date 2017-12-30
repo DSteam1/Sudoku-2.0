@@ -90,7 +90,6 @@ class Application():
         self.proceed_to_main_view()
 
     def proceed_to_main_view(self):
-        self.get_games()
         self.main_view([])
         return
 
@@ -101,12 +100,18 @@ class Application():
         rk = method.routing_key
         if (rk == "c_lobby.new_game"):
             LOG.info("Received the name of a new game")
-
-            #ugly ugly ugly chech, should be handled differently
+            #ugly ugly ugly check, should be handled differently
             if(self.existing_main_view != None):
                 games = self.existing_main_view.games
                 games.append(body)
                 self.update_main_view(games)
+        if(rk == "c_lobby.game_removed"):
+            LOG.info("Received id of removed game")
+            if (self.existing_main_view != None): #ugly ugly ugly
+                games = self.existing_main_view.games
+                games.remove(body)
+                self.update_main_view(games)
+
 
     #handles personal messages
     def user_callback(self, ch, method, props, body):
@@ -176,6 +181,14 @@ class Application():
 
         LOG.info("Set queue for receiving game updates")
 
+        # asks to create a new game
+
+    def create_game(self, nr_of_players):
+        self.channel.basic_publish(exchange='sudoku',
+                                   routing_key="s_lobby.new_game",
+                                   body=str(nr_of_players))
+        LOG.info("Asked to create a new game")
+
     #asks to join a game
     def join_game(self, id):
         self.corr_id = str(uuid.uuid4())
@@ -188,13 +201,6 @@ class Application():
                                    ),
                                    body=msg)
         LOG.info("Asked to join a game")
-
-    #asks to create a new game
-    def create_game(self, nr_of_players):
-        self.channel.basic_publish(exchange='sudoku',
-                                   routing_key="s_lobby.new_game",
-                                   body=str(nr_of_players))
-        LOG.info("Asked to create a new game")
 
     #asks for a list of available rooms
     def get_games(self):
@@ -228,6 +234,16 @@ class Application():
         else:
             LOG.info("Insertion failed.")
 
+    def leave_game(self):
+        ok = self.remote_game.leave(self.nickname)
+        self.game_open = False
+        self.existing_game_view = None
+        self.main_view([])
+        if(ok):
+            LOG.info("Left game")
+        else:
+            LOG.warn("Hmmmm")
+
     # Small functions for modifying views
 
     def start_game(self):
@@ -256,6 +272,7 @@ class Application():
         self.window_resize(_WIDTH, _HEIGHT)
         self.empty_frame(self.frame_container)
         self.existing_main_view = MV.MainView(self.frame_container, self, games)
+        self.get_games()
 
     def update_main_view(self, games):
         if self.existing_main_view is None:

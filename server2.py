@@ -43,6 +43,22 @@ class Game():
             self.complete_game_if_is_complete()
             return True
 
+    def leave(self, user):
+        self.players.pop(user)
+        self.scores.pop(user)
+        LOG.info("Removed client " + user + " from game")
+        if len(self.players) == 1 and self.has_started:
+            LOG.info("Only one player remaining. That player wins.")
+            winner = self.players.keys()[0]
+            self.server.send_game_over_msg(winner, self.id)
+            self.server.end_game(self.id)
+        elif len(self.players) == 0:
+            self.server.end_game(self.id)
+        elif len(self.players) >= 1 and not self.has_started:
+            self.server.send_game_scores(self._assemble_scores_msg_content(), self.id)
+        return True
+
+
     def complete_game_if_is_complete(self):
        if(self._is_game_complete()):
            winning_user = max(self.scores, key=self.scores.get)
@@ -193,6 +209,7 @@ class Server():
                                        body=str(game))
             LOG.info("Sent the id of a new game")
 
+
     #called from lobby_callback
     def create_game(self, nr_of_players):
         id = self.gamenr_counter
@@ -234,6 +251,12 @@ class Server():
                                    body=username)
         LOG.info("Sent name of the new player " + username)
 
+    def send_player_left_msg(self, game_id, username):
+        self.channel.basic_publish(exchange='sudoku',
+                                   routing_key="game." + str(game_id) + ".player_left",
+                                   body=username)
+        LOG.info("Sent name of the player who left " + username)
+
     def send_game_state(self, state, game_id):
         self.channel.basic_publish(exchange='sudoku',
                                    routing_key="game."+str(game_id)+".state",
@@ -252,17 +275,23 @@ class Server():
                                    body="")
         LOG.info("Sent 'game has started' message of game " + str(game_id))
 
-
     def send_game_over_msg(self, winner, game_id):
         self.channel.basic_publish(exchange='sudoku',
                                routing_key="game." + str(game_id) + ".over",
                                body=winner)
         LOG.info("Sent 'game over' message of game " + str(game_id))
 
+    def send_game_removed_msg(self, game_id):
+        self.channel.basic_publish(exchange='sudoku',
+                                   routing_key="c_lobby.game_removed",
+                                   body=str(game_id))
+        LOG.info("Sent the id of removed game")
+
     #removes ended game from a list
     def end_game(self, game_id):
         if game_id in self.games:
             self.games.pop(game_id)
+        self.send_game_removed_msg(game_id)
         LOG.info("Ended game " + str(game_id))
 
 class PyroDaemon(Thread):

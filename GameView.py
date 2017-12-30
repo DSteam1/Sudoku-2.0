@@ -80,4 +80,4 @@ class GameView:
             w.selection_clear(cur)
 
     def exit_game(self):
-        self.main_ui.exit_game()
+        self.main_ui.leave_game()
