@@ -47,6 +47,10 @@ class Application():
         self.game_open = False
         self.user_id = None
 
+        self.rmq_exchange = None
+        self.rmq_host = None
+        self.rmq_port = None
+        
         self.nickname_view()
 
         self.root.mainloop()
@@ -58,18 +62,18 @@ class Application():
 
     def connect(self):
         credentials = pika.PlainCredentials('DSHW2', 'DSHW2')
-        parameters = pika.ConnectionParameters("localhost", 5672)
+        parameters = pika.ConnectionParameters(self.rmq_host, self.rmq_port)
         self.connection = pika.BlockingConnection(parameters)
         self.channel = self.connection.channel()
 
         #declare exchange
-        self.channel.exchange_declare(exchange="sudoku", exchange_type='topic')
+        self.channel.exchange_declare(exchange=self.rmq_exchange, exchange_type='topic')
 
         #queue for lobby messages - when someone creates a new game then all users will be notified through a lobby
         result = self.channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
 
-        self.channel.queue_bind(exchange='sudoku',
+        self.channel.queue_bind(exchange=self.rmq_exchange,
                                 queue=queue_name,
                                 routing_key="c_lobby.*")
 
@@ -171,7 +175,7 @@ class Application():
         result = self.channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
 
-        self.channel.queue_bind(exchange='sudoku',
+        self.channel.queue_bind(exchange=self.rmq_exchange,
                                 queue=queue_name,
                                 routing_key="game."+id+".*")
 
@@ -184,7 +188,7 @@ class Application():
         # asks to create a new game
 
     def create_game(self, nr_of_players):
-        self.channel.basic_publish(exchange='sudoku',
+        self.channel.basic_publish(exchange=self.rmq_exchange,
                                    routing_key="s_lobby.new_game",
                                    body=str(nr_of_players))
         LOG.info("Asked to create a new game")
@@ -193,7 +197,7 @@ class Application():
     def join_game(self, id):
         self.corr_id = str(uuid.uuid4())
         msg = self.nickname + " " + str(id)
-        self.channel.basic_publish(exchange='sudoku',
+        self.channel.basic_publish(exchange=self.rmq_exchange,
                                    routing_key="user.join",
                                    properties=pika.BasicProperties(
                                        reply_to=self.callback_queue,
@@ -205,7 +209,7 @@ class Application():
     #asks for a list of available rooms
     def get_games(self):
         self.corr_id = str(uuid.uuid4())
-        self.channel.basic_publish(exchange='sudoku',
+        self.channel.basic_publish(exchange=self.rmq_exchange,
                                    routing_key='user.rooms',
                                    properties=pika.BasicProperties(
                                        reply_to=self.callback_queue,

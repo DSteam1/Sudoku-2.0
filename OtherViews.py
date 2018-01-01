@@ -2,6 +2,7 @@ from SudokuBoard import *
 from Tkinter import Tk, Canvas, Frame, Button, BOTH, TOP, BOTTOM, LEFT, RIGHT, END,  Label, CENTER, Listbox, Entry
 import tkMessageBox
 import os, sys, re
+from AnnounceListener import AnnounceListener
 
 USERNAMES_FILE = "usernames.txt"
 
@@ -11,23 +12,73 @@ class ServerAddressView:
         self.container = container
         self.application = application
 
-        self.nicknameLabel = Label(container, text="Welcome to Sudoku!")
-        self.nicknameLabel.pack(side=TOP)
+        # LEFT CONTAINER
+        self.frame_left = Frame(container)
+        self.frame_left.pack(side=LEFT, padx=20, pady=20)
+        exchange_label = Label(self.frame_left, text="Server info")
+        exchange_label.pack(side=TOP, pady=10)
 
-        self.nicknameLabel = Label(self.container, text="Enter Sudoku server address: ")
-        self.nicknameLabel.pack(side=LEFT)
+        # Exchange name row
+        frame_row1 = Frame(self.frame_left)
+        frame_row1.pack(side=TOP, padx=20, pady=5)
+        exchange_label = Label(frame_row1, text="Name:")
+        exchange_label.pack(side=LEFT)
+        self.exchangeEntry = Entry(frame_row1, bd=5)
+        self.exchangeEntry.pack(side=LEFT)
 
-        self.entry = Entry(self.container, bd=5)
-        self.entry.pack(side=LEFT)
+        # Hostname row
+        frame_row2 = Frame(self.frame_left)
+        frame_row2.pack(side=TOP, padx=20, pady=5)
+        host_label = Label(frame_row2, text="Host:  ")
+        host_label.pack(side=LEFT)
+        self.hostEntry = Entry(frame_row2, bd=5)
+        self.hostEntry.pack(side=LEFT)
 
-        self.enterButton = Button(self.container, text="Connect", command=self.handle_enter)
-        self.enterButton.pack(side=LEFT, padx=20, pady=20)
+        # Port row
+        frame_row3 = Frame(self.frame_left)
+        frame_row3.pack(side=TOP, padx=20, pady=5)
+        port_label = Label(frame_row3, text="Port:  ")
+        port_label.pack(side=LEFT)
+        self.portEntry = Entry(frame_row3, bd=5)
+        self.portEntry.pack(side=LEFT)
 
-        self.entry.insert(0, "127.0.0.1")  # should specify default
+        # Connect button
+        self.enterButton = Button(self.frame_left, text="Connect", command=self.handle_enter)
+        self.enterButton.pack(side=BOTTOM, padx=20, pady=20)
+
+        # RIGHT CONTAINER
+        self.frame_right = Frame(container)
+        self.frame_right.pack(side=LEFT, padx=20, pady=20)
+
+        servers_label = Label(self.frame_right, text="Available servers:")
+        servers_label.pack(pady=10)
+        self.servers_lb = Listbox(self.frame_right)
+        self.servers_lb.pack()
+        self.servers_lb.bind('<<ListboxSelect>>', self.fill_serverinfo)
+
+        pad = Label(self.frame_right, text="")
+        pad.pack(side=BOTTOM, pady=10)
+
+        # Default values
+        self.exchangeEntry.insert(0, "sudoku")
+        self.hostEntry.insert(0, "127.0.0.1")
+        self.portEntry.insert(0, "5672")
+
+        # Automatic server discovery
+        self.servers_list = []
+        self.announce_listener = AnnounceListener(self.servers_lb, self.servers_list)
+        self.announce_listener.start()
+
 
     def handle_enter(self):  # Handle proceed button
-        address = self.entry.get()
-        self.application.server = address
+        exchange = self.exchangeEntry.get()
+        host = self.hostEntry.get()
+        port = self.portEntry.get()
+
+        self.application.rmq_exchange = exchange
+        self.application.rmq_host = host
+        self.application.rmq_port = port
+
         self.application.connect()
 
     def fill_nickname(self, evt):
@@ -36,6 +87,19 @@ class ServerAddressView:
         self.entry.delete(0, END)
         self.entry.insert(0, w.get(idx))
 
+    def fill_serverinfo(self, evt):
+        if self.servers_lb.size() == 0: return
+        w = evt.widget
+        idx = int(w.curselection()[0])
+        # Exchange name
+        self.exchangeEntry.delete(0, END)
+        self.exchangeEntry.insert(0, self.servers_list[idx][0])
+        # Host name
+        self.hostEntry.delete(0, END)
+        self.hostEntry.insert(0, self.servers_list[idx][1])
+        # Port
+        self.portEntry.delete(0, END)
+        self.portEntry.insert(0, self.servers_list[idx][2])
 
 class NicknameView:
     """

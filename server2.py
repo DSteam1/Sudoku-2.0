@@ -5,9 +5,14 @@ from threading import Thread
 from utils import init_logging
 LOG = init_logging()
 import board
+from Announcer import Announcer
 
 ROOMS = "R"
 GAME_OBJ = "O"
+
+RMQ_HOST = "127.0.0.1"
+RMQ_PORT = 5672
+RMQ_EXCHANGE = "sudoku"
 
 #game remote object
 @Pyro4.expose
@@ -132,7 +137,16 @@ class Server():
         self.gamenr_counter = 1
         users = []
         self.pyro_daemon = self.start_daemon()
+
+        self.announce()  # Start announcing RabbitMQ server address, port and exchange name
         self.connect()
+
+
+    def announce(self):
+        self.announcer = Announcer(RMQ_HOST, RMQ_PORT, RMQ_EXCHANGE)
+        self.announcer.setName('Announcer')
+        self.announcer.start()
+        LOG.info("Announcer started")
 
     def start_daemon(self):
         daemon = PyroDaemon()
@@ -141,19 +155,19 @@ class Server():
 
     def connect(self):
         #credentials = pika.PlainCredentials('DSHW2', 'DSHW2')
-        parameters = pika.ConnectionParameters("localhost", 5672)
+        parameters = pika.ConnectionParameters(RMQ_HOST, RMQ_PORT)
         self.connection = pika.BlockingConnection(parameters)
         self.channel = self.connection.channel()
 
         # declare exchange
-        self.channel.exchange_declare(exchange="sudoku", exchange_type='topic')
+        self.channel.exchange_declare(exchange=RMQ_EXCHANGE, exchange_type='topic')
 
         #binding queue for receiving lobby messages - server and all clients are listening it, when someone creates a new game then
         #a message is sent to server lobby, server lobby then sents the name of the new to clients lobby
         result = self.channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
 
-        self.channel.queue_bind(exchange='sudoku',
+        self.channel.queue_bind(exchange=RMQ_EXCHANGE,
                            queue=queue_name,
                            routing_key="s_lobby.*")
 
@@ -167,7 +181,7 @@ class Server():
         result = self.channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
 
-        self.channel.queue_bind(exchange='sudoku',
+        self.channel.queue_bind(exchange=RMQ_EXCHANGE,
                                 queue=queue_name,
                                 routing_key="user.*")
 
@@ -204,7 +218,7 @@ class Server():
         rk = method.routing_key
         if(rk == "s_lobby.new_game"):
             game = self.create_game(int(body))
-            self.channel.basic_publish(exchange='sudoku',
+            self.channel.basic_publish(exchange=RMQ_EXCHANGE,
                                        routing_key="c_lobby.new_game",
                                        body=str(game))
             LOG.info("Sent the id of a new game")
@@ -246,43 +260,43 @@ class Server():
 
     # FUNCTIONS SENDING ALL KIND OF GAME RELATED MESSAGES to GAME SPECIFIC LOBBY THAT PLAYERS ARE LISTENING
     def send_player_joined_msg(self, game_id, username):
-        self.channel.basic_publish(exchange='sudoku',
+        self.channel.basic_publish(exchange=RMQ_EXCHANGE,
                                    routing_key="game." + str(game_id) + ".player_joined",
                                    body=username)
         LOG.info("Sent name of the new player " + username)
 
     def send_player_left_msg(self, game_id, username):
-        self.channel.basic_publish(exchange='sudoku',
+        self.channel.basic_publish(exchange=RMQ_EXCHANGE,
                                    routing_key="game." + str(game_id) + ".player_left",
                                    body=username)
         LOG.info("Sent name of the player who left " + username)
 
     def send_game_state(self, state, game_id):
-        self.channel.basic_publish(exchange='sudoku',
+        self.channel.basic_publish(exchange=RMQ_EXCHANGE,
                                    routing_key="game."+str(game_id)+".state",
                                    body=state)
         LOG.info("Sent state of a game " + str(game_id))
 
     def send_game_scores(self, scores, game_id):
-        self.channel.basic_publish(exchange='sudoku',
+        self.channel.basic_publish(exchange=RMQ_EXCHANGE,
                                    routing_key="game." + str(game_id) + ".scores",
                                    body=scores)
         LOG.info("Sent scores of a game " + str(game_id))
 
     def send_start_game_msg(self, game_id):
-        self.channel.basic_publish(exchange='sudoku',
+        self.channel.basic_publish(exchange=RMQ_EXCHANGE,
                                    routing_key="game." + str(game_id) + ".has_started",
                                    body="")
         LOG.info("Sent 'game has started' message of game " + str(game_id))
 
     def send_game_over_msg(self, winner, game_id):
-        self.channel.basic_publish(exchange='sudoku',
+        self.channel.basic_publish(exchange=RMQ_EXCHANGE,
                                routing_key="game." + str(game_id) + ".over",
                                body=winner)
         LOG.info("Sent 'game over' message of game " + str(game_id))
 
     def send_game_removed_msg(self, game_id):
-        self.channel.basic_publish(exchange='sudoku',
+        self.channel.basic_publish(exchange=RMQ_EXCHANGE,
                                    routing_key="c_lobby.game_removed",
                                    body=str(game_id))
         LOG.info("Sent the id of removed game")
