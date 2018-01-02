@@ -26,6 +26,7 @@ class Game():
         self.server = server
         self.board = board.Board()
         self.has_started = False
+        self.game_ended = False
 
     def add_player(self, username):
         self.scores[username] = 0
@@ -52,23 +53,27 @@ class Game():
         self.players.pop(user)
         self.scores.pop(user)
         LOG.info("Removed client " + user + " from game")
-        if len(self.players) == 1 and self.has_started:
+        if len(self.players) == 1 and self.has_started and not self._is_game_complete() and not self.game_ended:
             LOG.info("Only one player remaining. That player wins.")
             winner = self.players.keys()[0]
             self.server.send_game_over_msg(winner, self.id)
+            self.server.send_game_scores(self._assemble_scores_msg_content(), self.id)
             self.server.end_game(self.id)
-        elif len(self.players) == 0:
+            self.game_ended = True
+        elif len(self.players) == 0 and not self._is_game_complete() and not self.game_ended:
             self.server.end_game(self.id)
-        elif len(self.players) >= 1 and not self.has_started:
+            self.game_ended = True
+        elif len(self.players) >= 1 and not self._is_game_complete():
             self.server.send_game_scores(self._assemble_scores_msg_content(), self.id)
         return True
 
 
     def complete_game_if_is_complete(self):
-       if(self._is_game_complete()):
+       if(self._is_game_complete() and not self.game_ended):
            winning_user = max(self.scores, key=self.scores.get)
            self.server.send_game_over_msg(winning_user, self.id)
            self.server.end_game(self.id)
+           self.game_ended = True
 
     def start_game_if_enough_players(self):
         if len(self.players) >= int(self.nr_of_players):

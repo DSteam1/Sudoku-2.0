@@ -43,7 +43,7 @@ class SudokuUI(Frame):
         self.canvas.pack(fill=BOTH, side=TOP)
 
         self.__draw_grid()
-        self.__draw_puzzle()
+        self.draw_puzzle()
 
         self.canvas.bind("<Button-1>", self.__cell_clicked)
         self.canvas.bind("<Key>", self.__key_pressed)
@@ -67,7 +67,7 @@ class SudokuUI(Frame):
             y1 = MARGIN + i * SIDE
             self.canvas.create_line(x0, y0, x1, y1, fill=color)
 
-    def __draw_puzzle(self):
+    def draw_puzzle(self):
         """
         Deletes all the numbers and draws them from scratch
         """
@@ -79,10 +79,22 @@ class SudokuUI(Frame):
                 x = MARGIN + j * SIDE + SIDE / 2
                 y = MARGIN + i * SIDE + SIDE / 2
                 if answer != 0:
+                    coords = str(i) + " " + str(j)
                     color = "sea green" if can_edit else "black"
                     self.canvas.create_text(
-                        x, y, text=answer, tags="numbers", fill=color,
+                        x, y, text=answer, tags=["numbers", coords], fill=color,
                         font=self.boardFont)
+
+    def draw_update(self, i, j, number):
+        tag = str(i) + " " + str(j)
+        #self.canvas.delete(tag)
+        x = MARGIN + j * SIDE + SIDE / 2
+        y = MARGIN + i * SIDE + SIDE / 2
+        if number != 0:
+            self.canvas.create_text(
+                x, y, text=number, tags=["numbers", tag], fill="sea green",
+                font=self.boardFont)
+
 
     def __draw_cursor(self):
         """
@@ -176,7 +188,7 @@ class SudokuBoard(object):
         board.append(line)
 
         if len(board) != 9:
-            raise SudokuError("Each sudoku puzzle must be 9 lines long")
+            raise SudokuError("Each sudoku puzzle must be 9 lines long.")
 
         for a in board:
             if len(a) != 9:

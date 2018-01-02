@@ -56,7 +56,7 @@ class Application():
         self.root.mainloop()
 
         # After exiting from main loop
-        self.exit_game()
+        self.leave_game()
         self.disconnect()
 
 
@@ -110,8 +110,9 @@ class Application():
                 games.append(body)
                 self.update_main_view(games)
         if(rk == "c_lobby.game_removed"):
-            LOG.info("Received id of removed game")
+            LOG.info("Received id of removed game: " + body)
             if (self.existing_main_view != None): #ugly ugly ugly
+                LOG.info("Removed game from list")
                 games = self.existing_main_view.games
                 games.remove(body)
                 self.update_main_view(games)
@@ -225,13 +226,13 @@ class Application():
         heatmap = self.remote_game.get_board_heatmap()
         scores = self.remote_game.get_scores()
         scores = scores.split(";")
-        has_started = self.remote_game.get_has_started()
+        self.has_started = self.remote_game.get_has_started()
         self.game_view(state, heatmap, scores)
-        if(has_started):
+        if(self.has_started):
             self.start_game()
 
     def insert_number(self, row, column, digit):
-        LOG.info("Inserting number")
+        LOG.info("Inserting number.")
         ok = self.remote_game.insert_number(int(row), int(column), int(digit), self.nickname)
         if(ok):
             LOG.info("Insertion successful.")
@@ -239,8 +240,8 @@ class Application():
             LOG.info("Insertion failed.")
 
     def leave_game(self):
-        ok = self.remote_game.leave(self.nickname)
         self.game_open = False
+        ok = self.remote_game.leave(self.nickname)
         self.existing_game_view = None
         self.main_view([])
         if(ok):

@@ -3,7 +3,7 @@ import socket
 import struct
 from threading import Thread
 import json
-from Tkinter import END
+from Tkinter import END, TclError
 from utils import init_logging
 LOG = init_logging()
 
@@ -22,7 +22,7 @@ class AnnounceListener(Thread):
 
         # Create the socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         # Bind to the server address
         sock.bind(('', MC_PORT))
@@ -52,3 +52,5 @@ class AnnounceListener(Thread):
                 LOG.error(e)
             except KeyError, e:
                 LOG.error("No index: " + str(e))
+            except TclError, e:
+                pass

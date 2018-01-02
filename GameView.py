@@ -50,11 +50,23 @@ class GameView:
                 heatmap_str += row_str + ","
             types = heatmap_str
             types = types[:-1]
-
         game = SudokuGame(digits, types)
-        game.start()  # Start game
-        self.UI.destroy()
-        self.UI = SudokuUI(self.frame_left, game, self.main_ui)  # Display sudoku board
+        game.start()
+        i, j, number = self.get_updated_digit(game.puzzle, self.game.puzzle)
+        if(i != None and j != None and number != None):
+            self.game = game
+            self.UI.draw_update(i, j, number)
+        #self.UI.draw_puzzle()
+
+        #self.UI.destroy()
+        #self.UI = SudokuUI(self.frame_left, game, self.main_ui)  # Display sudoku board
+
+    def get_updated_digit(self, new_digit, old_digit):
+        for i in range(0, 9):
+            for j in range(0, 9):
+                if(new_digit[i][j] != old_digit[i][j]):
+                    return i,j, new_digit[i][j]
+        return None, None, None
 
     def show_end(self, content):
         self.UI.draw_victory(content)
