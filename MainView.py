@@ -1,6 +1,6 @@
-from SudokuBoard import *
-from Tkinter import Tk, Canvas, Frame, Button, BOTH, TOP, BOTTOM, LEFT, RIGHT, END,  Label, CENTER, Listbox, Entry
+from Tkinter import Frame, Button, LEFT, END, Label, Listbox
 import tkMessageBox
+
 
 class MainView:
     """
@@ -56,12 +56,11 @@ class MainView:
 
     def connect(self):
         selected_game_idx = self.games_lb.curselection()
-        selected_game = self.games_lb.get(selected_game_idx)
 
         if len(selected_game_idx) == 0:
             tkMessageBox.showinfo("Error", "No game selected")
         else:
-            selected_game = str.split(selected_game)[1]
+            selected_game = str.split(self.games_lb.get(selected_game_idx))[1]
             self.main_ui.game_open = True
             self.main_ui.join_game(selected_game)
 

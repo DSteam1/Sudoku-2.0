@@ -5,8 +5,11 @@ from threading import Thread
 from utils import init_logging
 from Tkconstants import NO
 LOG = init_logging()
-import board
 from Announcer import Announcer
+import board
+
+LOG = init_logging()
+
 
 ROOMS = "R"
 GAME_OBJ = "O"
@@ -16,6 +19,7 @@ LEAVE_RESPONSE = "A"
 RMQ_HOST = "127.0.0.1"
 RMQ_PORT = 5672
 RMQ_EXCHANGE = "sudoku"
+
 
 #game remote object
 @Pyro4.expose
@@ -70,9 +74,8 @@ class Game():
             self.server.send_game_scores(self._assemble_scores_msg_content(), self.id)
         return True
 
-
     def complete_game_if_is_complete(self):
-       if(self._is_game_complete() and not self.game_ended):
+       if self._is_game_complete() and not self.game_ended:
            winning_user = max(self.scores, key=self.scores.get)
            self.server.send_game_over_msg(winning_user, self.id)
            self.server.end_game(self.id)
@@ -115,7 +118,7 @@ class Game():
                 content += str(cell.get_value())
                 content += ","
         content = content[:-1]
-        return  content
+        return content
 
     def _assemble_board_heatmap(self):
         rows = self.board.ROWS
@@ -139,7 +142,7 @@ class Game():
         return complete
 
 
-class Server():
+class Server:
     def __init__(self):
         self.games = {}
         self.gamenr_counter = 1
@@ -148,7 +151,6 @@ class Server():
 
         self.announce()  # Start announcing RabbitMQ server address, port and exchange name
         self.connect()
-
 
     def announce(self):
         self.announcer = Announcer(RMQ_HOST, RMQ_PORT, RMQ_EXCHANGE)
@@ -203,7 +205,7 @@ class Server():
     #user specific messages are requesting list of rooms and requesting joining a game
     def user_callback(self, ch, method, props, body):
         rk = method.routing_key
-        if(rk == "user.rooms"):
+        if (rk == "user.rooms"):
                 games = [str(g) for g in self.games]
                 ch.basic_publish(exchange='',
                          routing_key=props.reply_to,
@@ -342,6 +344,7 @@ class Server():
         self.send_game_removed_msg(game_id)
         LOG.info("Ended game " + str(game_id))
 
+
 class PyroDaemon(Thread):
     def __init__(self):
         Thread.__init__(self)
@@ -359,5 +362,6 @@ class PyroDaemon(Thread):
 
     def run(self):
         self.pyro_daemon.requestLoop()
+
 
 Server()

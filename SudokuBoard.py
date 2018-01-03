@@ -1,6 +1,6 @@
 # Basic Sudoku implementation from http://newcoder.io/gui/intro/
 
-from Tkinter import Tk, Canvas, Frame, Button, BOTH, TOP, BOTTOM
+from Tkinter import Canvas, Frame, BOTH, TOP
 import tkFont
 
 MARGIN = 10  # Pixels around the board
@@ -13,6 +13,7 @@ class SudokuError(Exception):
     An application specific error.
     """
     pass
+
 
 class SudokuUI(Frame):
     """
@@ -29,7 +30,6 @@ class SudokuUI(Frame):
         self.row, self.col = -1, -1
 
         self.__initUI()
-
 
     def __initUI(self):
         """
@@ -94,7 +94,6 @@ class SudokuUI(Frame):
             self.canvas.create_text(
                 x, y, text=number, tags=["numbers", tag], fill="sea green",
                 font=self.boardFont)
-
 
     def __draw_cursor(self):
         """

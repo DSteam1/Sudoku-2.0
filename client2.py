@@ -2,8 +2,6 @@
 import pika
 import uuid
 import Pyro4
-import time
-from mtTkinter import *
 from utils import init_logging
 import OtherViews as OV
 import MainView as MV
@@ -23,6 +21,7 @@ GAME_ID = "D"
 JOIN_RESPONSE = "J"
 LEAVE_RESPONSE = "A"
 
+
 class Consumer(Thread):
     def __init__(self, channel, app):
         Thread.__init__(self)
@@ -35,6 +34,7 @@ class Consumer(Thread):
     
     def close_channel(self):
         self.channel.close()
+
 
 class Application():
     def __init__(self):
@@ -70,7 +70,7 @@ class Application():
         LOG.info("Sudoku closed")
     
     def connect(self):
-        credentials = pika.PlainCredentials('DSHW2', 'DSHW2')
+        #credentials = pika.PlainCredentials('DSHW2', 'DSHW2')
         parameters = pika.ConnectionParameters(self.rmq_host, self.rmq_port)
         self.connection = pika.BlockingConnection(parameters)
         self.channel = self.connection.channel()
@@ -130,7 +130,7 @@ class Application():
                 games = self.existing_main_view.games
                 games.append(body)
                 self.update_main_view(games)
-        if(rk == "c_lobby.game_removed"):
+        if (rk == "c_lobby.game_removed"):
             LOG.info("Received id of removed game: " + body)
             if (self.existing_main_view != None): #ugly ugly ugly
                 LOG.info("Removed game from list")
@@ -138,18 +138,17 @@ class Application():
                 games.remove(body)
                 self.update_main_view(games)
 
-
     #handles personal messages
     def user_callback(self, ch, method, props, body):
         parts = body.split(";")
-        if(parts[0] == ROOMS):
+        if (parts[0] == ROOMS):
             LOG.info("Received a list of games")
             if (parts[1] == ""):
                 LOG.info("No games :(")
             else:
                 games = parts[1].split(",")
                 self.update_main_view(games)
-        if(parts[0] == GAME_OBJ):
+        if (parts[0] == GAME_OBJ):
             if(parts[2] == ""):
                 LOG.info("Could not join game")
                 self.game_join_fault()
@@ -184,7 +183,7 @@ class Application():
         if (rk == prefix + "state"):
             LOG.info("Received state of a game")
             self.update_game_view(body, "", "")
-        if(rk == prefix + "scores"):
+        if (rk == prefix + "scores"):
             LOG.info("Received scores of a game")
             if self.game_open:
                 scores = body.split(";")
@@ -314,7 +313,7 @@ class Application():
                 LOG.warn("Hmmmm")
 
     # Small functions for modifying views
-
+    
     def start_game(self):
         self.game_started = True
         if self.existing_game_view is not None:
@@ -322,6 +321,7 @@ class Application():
 
     def show_end(self, winner):
         msg = "Game over. Player "+ winner + " won."
+        self.game_started = False
         self.existing_game_view.show_end(msg)
 
     # VIEWS
@@ -337,7 +337,6 @@ class Application():
         OV.ServerAddressView(self.frame_container, self)
 
     def main_view(self, games):
-        self.selected_game = None
         self.window_resize(_WIDTH, _HEIGHT)
         self.empty_frame(self.frame_container)
         self.existing_main_view = MV.MainView(self.frame_container, self, games)
@@ -350,7 +349,7 @@ class Application():
             self.existing_main_view.games = games
             self.existing_main_view.fill_games()
 
-    def game_view(self, state, types, scores = ""):
+    def game_view(self, state, types, scores=""):
         self.window_resize(_GAME_WIDTH, _GAME_HEIGHT)
         self.empty_frame(self.frame_container)
         self.existing_game_view = GV.GameView(self.frame_container, self, state, types, scores, self.game_started)
@@ -380,5 +379,6 @@ class Application():
 
     def window_resize(self, width, height):
         self.root.minsize(width=width, height=height)
+
 
 Application()

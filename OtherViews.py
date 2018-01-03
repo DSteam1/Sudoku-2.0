@@ -1,10 +1,10 @@
-from SudokuBoard import *
-from Tkinter import Tk, Canvas, Frame, Button, BOTH, TOP, BOTTOM, LEFT, RIGHT, END,  Label, CENTER, Listbox, Entry
+from Tkinter import Frame, Button, TOP, BOTTOM, LEFT, RIGHT, END,  Label, Listbox, Entry
 import tkMessageBox
 import os, sys, re
 from AnnounceListener import AnnounceListener
 
 USERNAMES_FILE = "usernames.txt"
+
 
 class ServerAddressView:
 
@@ -69,7 +69,6 @@ class ServerAddressView:
         self.announce_listener = AnnounceListener(self.servers_lb, self.servers_list)
         self.announce_listener.start()
 
-
     def handle_enter(self):  # Handle proceed button
         exchange = self.exchangeEntry.get()
         host = self.hostEntry.get()
@@ -100,6 +99,7 @@ class ServerAddressView:
         # Port
         self.portEntry.delete(0, END)
         self.portEntry.insert(0, self.servers_list[idx][2])
+
 
 class NicknameView:
     """

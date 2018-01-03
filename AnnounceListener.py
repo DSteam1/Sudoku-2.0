@@ -5,6 +5,7 @@ from threading import Thread
 import json
 from Tkinter import END, TclError
 from utils import init_logging
+
 LOG = init_logging()
 
 MC_GROUP = '224.3.29.71'

@@ -4,6 +4,7 @@ from test_patterns import PATTERN1
 import logging
 import random
 
+
 class Board:
     #contains a 9X9 cell grid
     def __init__(self):
@@ -98,6 +99,7 @@ class Board:
                 print s,
             print
 
+
 class Cell:
     #Empty cell value 0, valid values 1 through 9
     
@@ -161,13 +163,15 @@ class Cell:
     
     def debug_self(self):
         return "Type is " + Cell.SUPPORTED_TYPES,get(self.type) + ", correct value is " + str(self.correct_value) + ", user entered value is " + str(self.user_value)
-    
+
+
 #Testing the logic 
 def test_new_cell():
     cell = Cell()
     assert cell.type == Cell.TYPE_PRE_ENTERED
     assert cell.user_value == 0 and cell.correct_value == 0
     print("New cell works as planned")
+
 
 def test_modding_cell():
     cell = Cell()
@@ -183,12 +187,13 @@ def test_modding_cell():
     cell.set_value(3)
     assert cell.user_value == 3
 
-    
     print("Cell modding tests passed")
+
 
 def test_generating_board():
     board = Board()
     print("Board generates without errors")
+
 
 def test_modding_board():
     board = Board()
@@ -213,7 +218,8 @@ def test_modding_board():
     assert res == 0
         
     print("Board modding without errors")
-    
+
+
 def test_getting_value_no_issues():
     board = Board()
     board.setup_board(1)
@@ -225,12 +231,14 @@ def test_getting_value_no_issues():
     val2 = board.get_current_value(0,0)
     assert val2 == 1
     print("Getting value from board poses no issues")
-    
+
+
 def test_draw_board():
     board = Board()
     board.setup_board()
     board.print_board()
-    
+
+
 def test_board_solved():
     board = Board()
     board.setup_board(1)
@@ -249,6 +257,7 @@ def test_board_solved():
     
     assert board.is_solved()
     print("Board solved test passed")
+
 
 if __name__ == '__main__':
     FORMAT = '%(asctime)-15s %(levelname)s %(message)s'
@@ -303,4 +312,4 @@ if __name__ == '__main__':
         LOG.debug("Test board solved failed")
         
     LOG.debug("Tests completed. Passed %s of %s", nr_of_tests - nr_of_failed, nr_of_tests)
-    
+
