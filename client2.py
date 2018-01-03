@@ -20,6 +20,8 @@ _GAME_WIDTH = 800
 ROOMS = "R"
 GAME_OBJ = "O"
 GAME_ID = "D"
+JOIN_RESPONSE = "J"
+LEAVE_RESPONSE = "A"
 
 class Consumer(Thread):
     def __init__(self, channel, app):
@@ -30,6 +32,9 @@ class Consumer(Thread):
 
     def run(self):
         self.channel.start_consuming()
+    
+    def close_channel(self):
+        self.channel.close()
 
 class Application():
     def __init__(self):
@@ -43,6 +48,7 @@ class Application():
 
         self.existing_main_view = None
         self.existing_game_view = None
+        self.ever_connected = False
         self.game_started = False
         self.game_open = False
         self.user_id = None
@@ -56,10 +62,13 @@ class Application():
         self.root.mainloop()
 
         # After exiting from main loop
-        self.leave_game()
-        self.disconnect()
-
-
+        if self.ever_connected:
+            if self.game_open:
+                self.leave_game()
+            self.leave_lobby()
+            
+        LOG.info("Sudoku closed")
+    
     def connect(self):
         credentials = pika.PlainCredentials('DSHW2', 'DSHW2')
         parameters = pika.ConnectionParameters(self.rmq_host, self.rmq_port)
@@ -90,8 +99,20 @@ class Application():
 
         self.consumer = Consumer(self.channel, self)
         self.consumer.start()
-
-        self.proceed_to_main_view()
+        LOG.info("Requesting lobby connection")
+        self.join_lobby()
+        self.ever_connected = True
+        #self.proceed_to_main_view()
+    
+    def disconnect(self):
+        if (self.connection != None and self.connection.is_open):
+            self.consumer.close_channel()
+            #self.consumer = None
+            self.connection.close()
+            self.channel = None
+            self.connection = None
+            LOG.info("Reached disconnect end")
+        self.ever_connected = False
 
     def proceed_to_main_view(self):
         self.main_view([])
@@ -141,6 +162,20 @@ class Application():
                 self.game_update_queue(self.game_id)
 
                 self.proceed_to_game_view()
+        if (parts[0] == JOIN_RESPONSE):
+            if (parts[1] == 'True'):
+                #Proceed to lobby
+                LOG.info("Proceeding to lobby")
+                self.proceed_to_main_view()
+            else:
+                self.disconnect()
+                #Back to nickname view
+                LOG.info("Returning to nickname view. Closed channels")
+                self.nickname_view()
+        if (parts[0] == LEAVE_RESPONSE):
+            LOG.info("Server acknowledged leave")
+            self.disconnect()
+            LOG.info("Called disconnect")
 
     #handles game specific messages
     def game_callback(self, ch, method, props, body):
@@ -194,6 +229,34 @@ class Application():
                                    body=str(nr_of_players))
         LOG.info("Asked to create a new game")
 
+    #asks to join lobby
+    def join_lobby(self):
+        self.corr_id = str(uuid.uuid4())
+        msg = self.nickname
+        self.channel.basic_publish(exchange=self.rmq_exchange,
+                                   routing_key="user.lobbyjoin",
+                                   properties=pika.BasicProperties(
+                                       reply_to=self.callback_queue,
+                                       correlation_id=self.corr_id,
+                                   ),
+                                   body=msg)
+        LOG.info("Asked to join a lobby")
+    
+    def leave_lobby(self):
+        if self.connection != None and self.connection.is_open: 
+            
+            self.corr_id = str(uuid.uuid4())
+            msg = self.nickname
+            self.channel.basic_publish(exchange=self.rmq_exchange,
+                                       routing_key="user.lobbyleave",
+                                       properties=pika.BasicProperties(
+                                           reply_to=self.callback_queue,
+                                           correlation_id=self.corr_id,
+                                       ),
+                                       body=msg)
+            
+            LOG.info("Informed leaving")
+    
     #asks to join a game
     def join_game(self, id):
         self.corr_id = str(uuid.uuid4())
@@ -240,14 +303,15 @@ class Application():
             LOG.info("Insertion failed.")
 
     def leave_game(self):
-        self.game_open = False
-        ok = self.remote_game.leave(self.nickname)
-        self.existing_game_view = None
-        self.main_view([])
-        if(ok):
-            LOG.info("Left game")
-        else:
-            LOG.warn("Hmmmm")
+        if self.game_open:
+            self.game_open = False
+            ok = self.remote_game.leave(self.nickname)
+            self.existing_game_view = None
+            self.main_view([])
+            if(ok):
+                LOG.info("Left game")
+            else:
+                LOG.warn("Hmmmm")
 
     # Small functions for modifying views
 

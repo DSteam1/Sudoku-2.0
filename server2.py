@@ -3,12 +3,15 @@ import pika
 import Pyro4
 from threading import Thread
 from utils import init_logging
+from Tkconstants import NO
 LOG = init_logging()
 import board
 from Announcer import Announcer
 
 ROOMS = "R"
 GAME_OBJ = "O"
+JOIN_RESPONSE = "J"
+LEAVE_RESPONSE = "A"
 
 RMQ_HOST = "127.0.0.1"
 RMQ_PORT = 5672
@@ -140,7 +143,7 @@ class Server():
     def __init__(self):
         self.games = {}
         self.gamenr_counter = 1
-        users = []
+        self.users = []
         self.pyro_daemon = self.start_daemon()
 
         self.announce()  # Start announcing RabbitMQ server address, port and exchange name
@@ -217,6 +220,25 @@ class Server():
                                                                  props.correlation_id),
                              body=GAME_OBJ+";"+game_id+";"+uri)
             LOG.info("Sent uri of a game")
+        if (rk == "user.lobbyjoin"):
+            no_such_user = self.check_users(body)
+            if no_such_user:
+                self.users.append(body)
+            ch.basic_publish(exchange='',
+                             routing_key=props.reply_to,
+                             properties=pika.BasicProperties(correlation_id= \
+                                                                 props.correlation_id),
+                             body=JOIN_RESPONSE + ";" + str(no_such_user))
+            LOG.info("Client " + body + " tried to join lobby. Responded with " + str(no_such_user))
+        if (rk == "user.lobbyleave"):
+            self.remove_users(body)
+            ch.basic_publish(exchange='',
+                             routing_key=props.reply_to,
+                             properties=pika.BasicProperties(correlation_id= \
+                                                                 props.correlation_id),
+                             body=LEAVE_RESPONSE + ";" + str('Ack'))
+            LOG.info("Client " + body + " left lobby")
+            
 
     #handles messages sent to lobby - new game creation message is sent to lobby
     def lobby_callback(self, ch, method, props, body):
@@ -262,6 +284,13 @@ class Server():
 
             #self.send_new_board_state()
             #self.game.broadcast_scores()
+
+    # Checks if username in servers users list 
+    def check_users(self, body):
+        return not body in self.users
+    
+    def remove_users(self, body):
+        self.users.remove(body)
 
     # FUNCTIONS SENDING ALL KIND OF GAME RELATED MESSAGES to GAME SPECIFIC LOBBY THAT PLAYERS ARE LISTENING
     def send_player_joined_msg(self, game_id, username):
